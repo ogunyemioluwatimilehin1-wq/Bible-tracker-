@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Church Bible Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 p-4">
+
+  <!-- Header -->
+  <h1 class="text-2xl font-bold text-indigo-600 mb-4">Church Bible Tracker</h1>
+
+  <!-- Student Selection -->
+  <div class="mb-4">
+    <label class="block font-semibold mb-1">Select Your Name</label>
+    <select id="studentSelect" class="border p-2 rounded w-full">
+      <option value="">-- Choose your name --</option>
+      <option value="Timothy">Timothy</option>
+      <option value="Grace">Grace</option>
+      <option value="Daniel">Daniel</option>
+      <!-- Add more students here -->
+    </select>
+  </div>
+
+  <!-- Assignment -->
+  <div class="mb-4">
+    <label class="block font-semibold mb-1">Today's Chapter</label>
+    <input type="text" id="assignmentTitle" value="Matthew 1" class="border p-2 rounded w-full" readonly>
+  </div>
+
+  <!-- Reflection Form -->
+  <form id="reviewForm" class="mb-6">
+    <label class="block font-semibold mb-1">Your Reflection</label>
+    <textarea id="reviewText" rows="5" class="border p-2 rounded w-full" placeholder="Write your reflection..."></textarea>
+    <button type="submit" class="mt-2 bg-indigo-600 text-white px-4 py-2 rounded">Submit Reflection</button>
+  </form>
+
+  <!-- Admin Dashboard -->
+  <div id="adminDashboard" class="bg-white p-4 rounded shadow">
+    <h2 class="font-bold text-lg mb-2"><i class="fas fa-user-check text-indigo-500"></i> Admin Dashboard</h2>
+    <ul id="submissionList" class="space-y-2 text-sm text-gray-700 max-h-64 overflow-y-auto">
+      <!-- Submissions will appear here -->
+    </ul>
+  </div>
+
+  <!-- Firebase Setup -->
+  <script type="module">
+    // Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyB_s-sIVQDCpmnSuqvVIVWRmy_cta8myM",
+      authDomain: "church-bible-review.firebaseapp.com",
+      projectId: "church-bible-review",
+      storageBucket: "church-bible-review.firebasestorage.app",
+      messagingSenderId: "53543883622",
+      appId: "1:53543883622:web:95cb620a9bd60c0abb2ea7"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Save Reflection
+    async function saveReflection(studentName, chapter, reflection) {
+      try {
+        await addDoc(collection(db, "reflections"), {
+          name: studentName,
+          chapter: chapter,
+          reflection: reflection,
+          timestamp: new Date()
+        });
+        alert("Reflection submitted successfully!");
+        loadSubmissions();
+        document.getElementById("reviewText").value = "";
+      } catch (e) {
+        console.error("Error saving reflection: ", e);
+        alert("Failed to submit reflection. Try again.");
+      }
+    }
+
+    // Handle Form Submit
+    document.getElementById("reviewForm").addEventListener("submit", function(e){
+      e.preventDefault();
+      const studentName = document.getElementById("studentSelect").value;
+      const chapter = document.getElementById("assignmentTitle").value;
+      const reflection = document.getElementById("reviewText").value.trim();
+
+      if(!studentName){
+        alert("Please select your name");
+        return;
+      }
+      if(!reflection){
+        alert("Please write your reflection");
+        return;
+      }
+
+      saveReflection(studentName, chapter, reflection);
+    });
+
+    // Load Submissions for Admin
+    async function loadSubmissions() {
+      const submissionList = document.getElementById("submissionList");
+      submissionList.innerHTML = "Loading submissions...";
+      try {
+        const q = query(collection(db, "reflections"), orderBy("timestamp", "desc"));
+        const querySnapshot = await getDocs(q);
+        if(querySnapshot.empty){
+          submissionList.innerHTML = "<li>No submissions yet.</li>";
+          return;
+        }
+        submissionList.innerHTML = "";
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          const li = document.createElement("li");
+          li.className = "border-b border-gray-200 py-2";
+          li.innerHTML = `<strong>${data.name}</strong> - <em>${data.chapter}</em>: ${data.reflection}`;
+          submissionList.appendChild(li);
+        });
+      } catch (e) {
+        console.error("Error loading submissions: ", e);
+        submissionList.innerHTML = "<li>Failed to load submissions.</li>";
+      }
+    }
+
+    window.addEventListener("load", loadSubmissions);
+  </script>
+
+</body>
+</html>
